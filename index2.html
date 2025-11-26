@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Upload Photo to S3</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+        }
+        #status {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        #preview {
+            margin-top: 20px;
+            max-width: 300px;
+        }
+        .loading {
+            color: orange;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+
+<h2>Upload Photo to S3</h2>
+
+<input type="file" id="fileInput">
+<br><br>
+<button onclick="uploadPhoto()">Upload</button>
+
+<p id="status"></p>
+
+<img id="preview" style="display:none;" />
+
+<script>
+async function uploadPhoto() {
+    const file = document.getElementById("fileInput").files[0];
+    const status = document.getElementById("status");
+    const preview = document.getElementById("preview");
+
+    if (!file) {
+        alert("Please select a file.");
+        return;
+    }
+
+    status.className = "loading";
+    status.innerHTML = "Uploading... Please wait.";
+
+    try {
+        // 1. Get presigned URL
+        const response = await fetch(
+            "https://gufseuht7c.execute-api.us-east-1.amazonaws.com//get-upload-url");
+
+        const data = await response.json();
+        const uploadUrl = data.uploadUrl;
+        const fileName = data.fileName;
+
+        // 2. Upload to S3
+        const upload = await fetch(uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": file.type },
+            body: file
+        });
+
+        if (upload.ok) {
+            status.className = "success";
+            status.innerHTML = "Upload Successful! File saved to S3.";
+
+            // Show preview of uploaded image
+            const s3PublicUrl =
+                "https://photo-upload-aryan-bucket.s3.us-east-1.amazonaws.com/" + fileName;
+
+            preview.src = s3PublicUrl;
+            preview.style.display = "block";
+        } else {
+            status.className = "error";
+            status.innerHTML = "Upload Failed!";
+        }
+    } catch (err) {
+        status.className = "error";
+        status.innerHTML = "Error: " + err;
+    }
+}
+</script>
+
+</body>
+</html>
